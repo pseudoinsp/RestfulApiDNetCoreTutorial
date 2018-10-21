@@ -13,6 +13,8 @@ using Library.API.Entities;
 using Microsoft.EntityFrameworkCore;
 using Library.API.Helpers;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Library.API.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Library.API
 {
@@ -36,6 +38,7 @@ namespace Library.API
                 // default outputformatter: the first one in this list
                 // it will be used if no accept-header was specified
                 setupAction.OutputFormatters.Add(new XmlDataContractSerializerOutputFormatter());
+                setupAction.InputFormatters.Add(new XmlDataContractSerializerInputFormatter(new MvcOptions()));
             });
 
             // register the DbContext on the container, getting the connection string from
@@ -71,11 +74,15 @@ namespace Library.API
             // AutoMapper: map two objects together  -- now, map Author to AuthorDto
             AutoMapper.Mapper.Initialize(cfg =>
             {
-                cfg.CreateMap<Author, Models.AuthorDto>()
+                cfg.CreateMap<Author, AuthorDto>()
                 .ForMember(dest => dest.Name, opt => opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
                 .ForMember(dest => dest.Age, opt => opt.MapFrom(src => src.DateOfBirth.GetCurrentAge()));
 
-                cfg.CreateMap<Book, Models.AuthorDto>();
+                cfg.CreateMap<Book, AuthorDto>();
+
+                cfg.CreateMap<AuthorForCreationDto, Author>();
+
+                cfg.CreateMap<BookForCreationDto, Book>();
             });
 
             libraryContext.EnsureSeedDataForContext();

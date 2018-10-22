@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Library.API.Entities;
+using Library.API.Helpers;
 using Library.API.Models;
 using Library.API.Services;
 using Microsoft.AspNetCore.Http;
@@ -13,42 +14,82 @@ namespace Library.API.Controllers
     public class AuthorsController : Controller
     {
         private ILibraryRepository _libraryRepository;
+        private readonly IUrlHelper _urlHelper;
 
-        public AuthorsController(ILibraryRepository libraryRepository)
+        public AuthorsController(ILibraryRepository libraryRepository, IUrlHelper urlHelper)
         {
             _libraryRepository = libraryRepository;
+            _urlHelper = urlHelper;
         }
 
         // if no route on controller
         //[HttpGet("api/authors")]
-        [HttpGet()]
-        public IActionResult GetAuthors()
+        //public IActionResult GetAuthors([FromQuery()] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        [HttpGet(Name = "GetAuthors")]
+        public IActionResult GetAuthors(AuthorsResourceParameters authorsResourceParameters)
         {
-            IEnumerable<Author> authorsFromRepo = _libraryRepository.GetAuthors();
+            var authorsFromRepo = _libraryRepository.GetAuthors(authorsResourceParameters);
 
+            var previousPageLink = authorsFromRepo.HasPrevious ?
+                    CreateAuthorsResourceUri(authorsResourceParameters, ResourceUriType.PreviousPage) : null;
 
-            // this should be avoided
-            //var authors = new List<AuthorDto>();
+            var nextPageLink = authorsFromRepo.HasNext ?
+                   CreateAuthorsResourceUri(authorsResourceParameters, ResourceUriType.NextPage) : null;
 
-            //foreach (Entities.Author author in authorsFromRepo)
-            //{
-            //    authors.Add(new AuthorDto()
-            //    {
-            //        Id = author.Id,
-            //        Genre = author.Genre,
-            //        Name = string.Join(' ', new[] { author.FirstName, author.LastName }),
-            //        Age = author.DateOfBirth.GetCurrentAge()
-            //    });
-            //};
+            var paginationMetadaa = new
+            {
+                totalCount = authorsFromRepo.TotalCount,
+                pageSize = authorsFromRepo.PageSize,
+                currentPage = authorsFromRepo.CurrentPage,
+                totalPages = authorsFromRepo.TotalPages,
+                previousPageLink = previousPageLink,
+                nextPageLink = nextPageLink
+            };
+
+            Response.Headers.Add("X-Pagination", Newtonsoft.Json.JsonConvert.SerializeObject(paginationMetadaa));
 
             var authors = Mapper.Map<IEnumerable<AuthorDto>>(authorsFromRepo);
 
-            //return new JsonResult(authors);
             return Ok(authors);
         }
 
+        private string CreateAuthorsResourceUri(AuthorsResourceParameters authorsResourceParameters, ResourceUriType type)
+        {
+            switch (type)
+            {
+                case ResourceUriType.PreviousPage:
+                    return _urlHelper.Link("GetAuthors",
+                      new
+                      {
+                          searchQuery = authorsResourceParameters.SearchQuery,
+                          genre = authorsResourceParameters.Genre,
+                          pageNumber = authorsResourceParameters.PageNumber - 1,
+                          pageSize = authorsResourceParameters.PageSize
+                      });
+                case ResourceUriType.NextPage:
+                    return _urlHelper.Link("GetAuthors",
+                      new
+                      {
+                          searchQuery = authorsResourceParameters.SearchQuery,
+                          genre = authorsResourceParameters.Genre,
+                          pageNumber = authorsResourceParameters.PageNumber + 1,
+                          pageSize = authorsResourceParameters.PageSize
+                      });
+
+                default:
+                    return _urlHelper.Link("GetAuthors",
+                    new
+                    {
+                        searchQuery = authorsResourceParameters.SearchQuery,
+                        genre = authorsResourceParameters.Genre,
+                        pageNumber = authorsResourceParameters.PageNumber,
+                        pageSize = authorsResourceParameters.PageSize
+                    });
+            }
+        }
+
         [HttpGet("{id}", Name = "GetAuthor")]
-        public IActionResult GetAuthor(Guid id)
+        public IActionResult GetAuthor([FromRoute] Guid id)
         {
             // cumbersome -> need global exceptions handling -- in product, generic info, in development, stacktrace
             //try
@@ -127,7 +168,7 @@ namespace Library.API.Controllers
 
             if (!_libraryRepository.Save())
             {
-                
+
                 throw new Exception("Deleting an authord failed to save.");
             }
 

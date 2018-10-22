@@ -1,11 +1,6 @@
 ﻿namespace Library.API.Models
 {
-    public class BookForCreationDto
+    public class BookForCreationDto : BookForManipulationDto
     {
-        // no authorId, get it from body
-
-        public string Title { get; set; }
-
-        public string Description { get; set; }
     }
 }

@@ -1,9 +1,10 @@
-﻿namespace Library.API.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Library.API.Models
 {
-    public class BookForUpdateDto
+    public class BookForUpdateDto : BookForManipulationDto
     {
-        // id is provided in the HttpPut uri
-        public string Title { get; set; }
-        public string Description { get; set; }
+        [Required(ErrorMessage = "You should fill out the description.")]
+        public override string Description { get => base.Description; set => base.Description = value; }
     }
 }

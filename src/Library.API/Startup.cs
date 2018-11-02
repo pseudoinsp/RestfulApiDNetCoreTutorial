@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using NLog.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Newtonsoft.Json.Serialization;
 
 namespace Library.API
 {
@@ -43,6 +44,12 @@ namespace Library.API
                 // it will be used if no accept-header was specified
                 setupAction.OutputFormatters.Add(new XmlDataContractSerializerOutputFormatter());
                 setupAction.InputFormatters.Add(new XmlDataContractSerializerInputFormatter(new MvcOptions()));
+            }) 
+            // the default contract resolver serializes the data "as-is", and now we use ExpandoObject for data repr.
+            // before the serialization, whose dictionary'keys are not camel case.
+            .AddJsonOptions(options =>
+            {
+                options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
             });
 
             // register the DbContext on the container, getting the connection string from
@@ -61,6 +68,10 @@ namespace Library.API
                 var actionContext = implementationFactory.GetService<IActionContextAccessor>().ActionContext;
                 return new UrlHelper(actionContext);
             });
+
+            // lightweight, stateless ->transient
+            services.AddTransient<IPropertyMappingService, PropertyMappingService>();
+            services.AddTransient<ITypeHelperService, TypeHelperService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

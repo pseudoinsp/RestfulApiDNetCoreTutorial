@@ -20,6 +20,7 @@ using NLog.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Newtonsoft.Json.Serialization;
+using Marvin.Cache.Headers;
 
 namespace Library.API
 {
@@ -92,6 +93,20 @@ namespace Library.API
             // lightweight, stateless ->transient
             services.AddTransient<IPropertyMappingService, PropertyMappingService>();
             services.AddTransient<ITypeHelperService, TypeHelperService>();
+
+            services.AddHttpCacheHeaders(
+                (ExpirationModelOptions expirationModelOptions)
+                =>
+                {
+                    expirationModelOptions.MaxAge = 600;
+                },
+                (ValidationModelOptions validationModelOptions)
+                =>
+                {
+                    validationModelOptions.MustRevalidate = true;
+                });
+
+            services.AddResponseCaching();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -151,6 +166,11 @@ namespace Library.API
             });
 
             libraryContext.EnsureSeedDataForContext();
+
+            app.UseResponseCaching();
+
+            // before MVC middleware!
+            app.UseHttpCacheHeaders();
 
             app.UseMvc();
         }

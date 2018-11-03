@@ -43,7 +43,27 @@ namespace Library.API
                 // default outputformatter: the first one in this list
                 // it will be used if no accept-header was specified
                 setupAction.OutputFormatters.Add(new XmlDataContractSerializerOutputFormatter());
-                setupAction.InputFormatters.Add(new XmlDataContractSerializerInputFormatter(new MvcOptions()));
+                //setupAction.InputFormatters.Add(new XmlDataContractSerializerInputFormatter(new MvcOptions()));
+
+                var xmlDataContractSerializer = new XmlDataContractSerializerInputFormatter(new MvcOptions());
+                xmlDataContractSerializer.SupportedMediaTypes.Add("application/vnd.marvin.authorwithdateofdeath.full+xml");
+                setupAction.InputFormatters.Add(xmlDataContractSerializer);
+
+                var jsonInputFormatter = setupAction.InputFormatters.OfType<JsonInputFormatter>().FirstOrDefault();
+
+                if (jsonInputFormatter != null)
+                {
+                    jsonInputFormatter.SupportedMediaTypes.Add("application/vnd.marvin.author.full+json");
+                    jsonInputFormatter.SupportedMediaTypes.Add("application/vnd.marvin.authorwithtimeofdeath.full+json");
+                }
+
+
+                var jsonOutputFormatter = setupAction.OutputFormatters.OfType<JsonOutputFormatter>().FirstOrDefault();
+
+                if (jsonOutputFormatter != null)
+                {
+                    jsonOutputFormatter.SupportedMediaTypes.Add("application/vnd.marvin.hateoas+json");
+                }
             }) 
             // the default contract resolver serializes the data "as-is", and now we use ExpandoObject for data repr.
             // before the serialization, whose dictionary'keys are not camel case.
@@ -115,11 +135,13 @@ namespace Library.API
             {
                 cfg.CreateMap<Author, AuthorDto>()
                 .ForMember(dest => dest.Name, opt => opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
-                .ForMember(dest => dest.Age, opt => opt.MapFrom(src => src.DateOfBirth.GetCurrentAge()));
+                .ForMember(dest => dest.Age, opt => opt.MapFrom(src => src.DateOfBirth.GetCurrentAge(src.DateOfDeath)));
 
                 cfg.CreateMap<Book, BookDto>();
 
                 cfg.CreateMap<AuthorForCreationDto, Author>();
+
+                cfg.CreateMap<AuthorForCreationWithDateOfDeathDto, Author>();
 
                 cfg.CreateMap<BookForCreationDto, Book>();
 
